@@ -1,8 +1,6 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO
-import mysql.connector
 import logging
-import socket
 
 # Initialize Flask app and SocketIO
 app = Flask(__name__)
@@ -10,23 +8,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# Database Connection
-def connect_db():
-    try:
-        db_conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",
-            database="chatbot_db"
-        )
-        logging.info("Database connection established successfully.")
-        return db_conn, db_conn.cursor()
-    except mysql.connector.Error as err:
-        logging.error(f"Error connecting to MySQL: {err}")
-        return None, None
-
-db, cursor = connect_db()
 
 # Predefined chatbot responses
 responses = {  
@@ -89,10 +70,9 @@ responses = {
     "Contact to Admin": {
         "reply": "Redirecting to admin chat...",
         "options": [],
-        "redirect": "/chat_message.php"
+        "redirect": "../chat_messages.php"
     }
 }
-
 
 @app.route('/')
 def index():
@@ -111,19 +91,7 @@ def handle_user_message(data):
     logging.info(f"User Message: {user_message}")
     logging.info(f"Bot Response: {response['reply']}")
 
-    if db:
-        save_message(user_message, response['reply'])
-
     socketio.emit('bot_response', response)
-
-def save_message(user_message, bot_reply):
-    if db and cursor:
-        try:
-            cursor.execute("INSERT INTO chatbot_messages (user_message, bot_reply) VALUES (%s, %s)", (user_message, bot_reply))
-            db.commit()
-            logging.info(f"Saved message to database: {user_message} -> {bot_reply}")
-        except mysql.connector.Error as err:
-            logging.error(f"Error saving message to database: {err}")
 
 if __name__ == '__main__':
     port = 5003
